@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html style="height:100%">
+<head>
+    <meta charset='utf-8' />
+    <title>Urban Trip Purposes Visualization</title>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+	<script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+	<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+	<script src="https://cdn.bootcss.com/echarts/4.1.0.rc2/echarts.min.js"></script>
+	<link href='https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css' rel='stylesheet' />
+    <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.47.0/mapbox-gl.js'></script>
+    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.47.0/mapbox-gl.css' rel='stylesheet' />
+	<script src='checkins_manhattan.js'></script>
+	<script src='taxi_manhattan.js'></script>
+	<script src='function.js'></script>
+	<script src='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v2.3.0/mapbox-gl-geocoder.min.js'></script>
+	<link rel='stylesheet' href='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v2.3.0/mapbox-gl-geocoder.css' type='text/css' />
+    <style>
+        body{ margin:0; padding:0;height:100%;}
+		#title{padding:0.5%;height:3%;boder:solid 0.5% #fcc;background-color:#363636;text-align:center;display:-webkit-box;-webkit-box-pack:center;-webkit-box-align:center;}
+		#map{position:relative;float:right;width:75%;height:95%;border:solid 5px #D3D3D3;text-align:left;box-sizing: border-box;}
+        #time_module{position:relative;float:left;width:25%;height:10%;border:solid 5px #D3D3D3;box-sizing: border-box;}
+		#trip_module{position:relative;float:left;width:25%;height:40%;border:solid 5px #D3D3D3;box-sizing: border-box;}
+		#checkin_module{position:relative;float:left;width:25%;height:45%;border:solid 5px #D3D3D3;box-sizing: border-box;}
+		#info_latlng{position:absolute;z-index:999; top:4%; right:2%; width:260px; height: 4.5%; background:url(bg.jpg); font-family: monospace; border-radius: 3px;font-weight: bold}
+    #heatmap_legend_checkins{position:absolute;z-index:999; bottom:1%; left:10px; width:350px; height: 5.5%; background-color:#FFFFFF; font-family: monospace; border-radius: 3px;font-weight: bold;display:none}
+		#heatmap_legend_purpose{position:absolute;z-index:999; bottom:1%; left:10px; width:350px; height: 5.5%; background-color:#FFFFFF; font-family: monospace; border-radius: 3px;font-weight: bold;display:none}
+    </style>
+</head>			
+			
+<body>
+<style>
+    .mapboxgl-popup {
+        max-width: 400px;
+        font: 14px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+    }
+	*{margin:0;padding:0;}
+    .loading{
+          width:75%;height:95%;position:fixed;background:rgba(255,255,255,0.6);z-index:999;
+    }
+    .loading >p{position:absolute;left:0;right:0;top:0;bottom:0;margin:auto;height:30px;width:120px;}
+    .loading >p i{display: block;float:left;margin:0 5px; width:5px;height:30px;background:#f00;transform:scaleY(0.3);
+                   animation:loading 1s ease infinite alternate;
+    }
+.loading >p i:nth-child(2){animation-delay:0.1s;}
+.loading >p i:nth-child(3){animation-delay:0.2s;}
+.loading >p i:nth-child(4){animation-delay:0.3s;}
+.loading >p i:nth-child(5){animation-delay:0.4s;}
+    @keyframes loading{
+           0,40%,100%{transform:scaleY(0.3);}
+           20%{transform:scaleY(1);}
+    }
+	.session {
+	  margin: 10px;
+	}
+
+	.row {
+	  height: 12px;
+	  width: 100%;
+	}
+
+	.colors {
+	  background: linear-gradient(to right, rgba(33,102,172,0), rgb(103,169,207), rgb(209,229,240), rgb(253,219,199), rgb(239,138,98), rgb(178,24,43));
+	  margin-bottom: 5px;
+	}
+
+	.label {
+	  width: 15%;
+	  display: inline-block;
+	  text-align: center;
+	}
+</style>
+<div id='title' >
+	<label class="title" style='font-size:20px;color:white;font-weight:bold;'>Urban Trip Purposes Visualization in Manhattan</label>
+</div>
+<div id='map' >	
+		<div id="info_latlng" >
+			<span style="position:relative; top:23%; left:5%; font-size: 16px;">latlng:</span>
+			<span id="latlng" style="position: absolute; top:23%; left:33%; font-size: 16px;"></span>
+		</div>
+		<div class="loading" style="display:none;">
+			 <p>
+			  <i></i>
+			  <i></i>
+			  <i></i>
+			  <i></i>
+			  <i></i>
+			</p>
+		</div>
+		<div id="heatmap_legend_checkins" >
+			<div class='session'>
+			  <div class='row colors'>
+			  </div>
+			  <div class='row labels'>
+				<div class='label'>0</div>
+				<div class='label'>100</div>
+				<div class='label'>200</div>
+				<div class='label'>300</div>
+				<div class='label'>400</div>
+				<div class='label'>500+</div>
+			  </div>
+			</div>
+		</div>
+		<div id="heatmap_legend_purpose" >
+			<div class='session'>
+			  <div class='row colors'>
+			  </div>
+			  <div class='row labels'>
+				<div class='label'>0</div>
+				<div class='label'>30</div>
+				<div class='label'>60</div>
+				<div class='label'>90</div>
+				<div class='label'>120</div>
+				<div class='label'>150+</div>
+			  </div>
+			</div>
+		</div>
+</div>
+
+<div id='time_module'>
+	<div style="position:relative;float:left;width:100%;padding:1% 0 1% 0;font-size:16px;background-color:#EEE9E9;">
+		<label><b>&nbsp;Day Type:&nbsp;&nbsp;</b></label>
+		<input id='workday' type='checkbox' name='rtoggle' value='workday'  onclick="menu()">
+		<label for='workday'>workdays</label>
+		<input id='non-workday' type='checkbox' name='rtoggle' value='non-workday' onclick="menu()">
+		<label for='non-workday'>non-workdays</label>
+	</div>
+	<div class='control_time' style="position:absolute;top:30%;width:100%;height:70%;margin:17px 0 0 0;text-align:center">
+		<label for='time'><b>Time:&nbsp;&nbsp;</label><u><span id='span_time_hour'>12</span>:<span id='span_time_min'>00</span>:<span id='span_time_reco'>00</span></b></u>&nbsp;&nbsp;&nbsp;		
+		<input id="time"  type="range" value="43200"  min="0" max="86399" step="1"  />
+	</div>
+</div>
+<div id='trip_module'>		
+	<div class='control_trip' style="position:relative;float:left;width:100%;padding:1% 0 1% 0;font-size:16px;background-color:#EEE9E9;">
+		<label><b>&nbsp;Trip Purpose:&nbsp;&nbsp;</b></label>
+		<label><input id="individual_inference"  type="radio" name="control_trip_purpose" checked="checked" onclick="control_trip_purpose_analysis_menu()" />Individual Inference&nbsp;&nbsp;</label>
+		<label><input id="evolving_patterns" name="control_trip_purpose" type="radio"  onclick="control_trip_purpose_analysis_menu()"/>Evolving Patterns </label> 
+	</div>
+	<div id="individual_inference_module"  style="position:absolute;top:10%;height:90%;padding:2% 0 0 0;width:100%;">
+		<div id="marker_latlng" style="position:relative;float:left;width:37%;font-size:16px;padding:0 0 0 2%;">
+			<div><span ><b><font color="#1E90FF">O</font>&nbsp;:&nbsp;</b></span><u><input type="text" id="origin_latlng" style="width:130px;color:#1E90FF"></u></div>
+			<div style="padding:3% 0 0 0"><span ><b><font color="#FF6347">D</font>&nbsp;:&nbsp;</b></span><u><input type="text" id="destination_latlng" style="width:130px;color:#FF6347"></u></div>
+		</div>
+		<div name="control_inference" style="position:relative;float:left;width:18%;font-size:16px;">
+			<div><button type="button" id='button_get_trip_purpose' style="width:85%;background-color:#778899;color:#FFFAFA">Get</button></div>
+			<div style="padding:5% 0 0 0"><button type="button" id='button_cancel_trip' style="width:85%;background-color:#778899;color:#FFFAFA">Cancel</button></div>
+		</div>
+		<div id="trip_purpose_display" style="position:relative;float:right;width:40%;margin:auto;text-align:center;font-weight:bold;opacity:1;font-size:24px;padding:1.5% 0 0 0">
+			<font color="#2E8B57" face="courier"><span id="trip_purpose" >Dining</span></font>		
+		</div>
+		
+		<div id='trip_purpose_inference_chart' style="position:absolute;top:23%;height:77%;padding:1% 0 0 0;width:100%;border-style:dotted none none none;border-width:3px;border-color:#D3D3D3;box-sizing: border-box;"></div>
+	</div>
+	
+	<div id="evolving_patterns_module"  style="position:absolute;top:10%;height:90%;padding:2% 0 0 0;width:100%;display:none">
+		<div style="font-size:15px;padding:0 0 0 4%"><b>
+			<input id='all_purpose' type="radio" name="urban_trip_purpose" onclick="control_trip_purpose_type_menu()">
+			<label for='all_purpose'>All</label>
+			<input id='dining_purpose' type="radio" name="urban_trip_purpose"  onclick="control_trip_purpose_type_menu()">
+			<label for='dining_purpose'><font color='#1C86EE'>Dining</font></label>
+			<input id='recreation_purpose' type="radio" name="urban_trip_purpose"  onclick="control_trip_purpose_type_menu()">
+			<label for='recreation_purpose'><font color='#2E8B57'>Recreation</font></label>
+			<input id='work_purpose' type="radio" name="urban_trip_purpose"  onclick="control_trip_purpose_type_menu()">
+			<label for='work_purpose'><font color='#828282'>Work</font></label>
+			<input id='homing_purpose' type="radio" name="urban_trip_purpose"  onclick="control_trip_purpose_type_menu()">
+			<label for='homing_purpose'><font color='#EEB422'>Homing</font></label>
+			<input id='others_purpose' type="radio" name="urban_trip_purpose"  onclick="control_trip_purpose_type_menu()">
+			<label for='others_purpose'><font color='#EE3B3B'>Others</font></label></b>
+		</div>
+		
+			
+		<div id="for_single_purpose" style="position:absolute;top:23%;height:77%;padding:1% 0 0 0;width:100%;border-style:dotted none none none;border-width:3px;border-color:#D3D3D3;box-sizing: border-box;display:none">
+			<div class='control' style="position:relative;float:left;width:20%;font-size:16px;padding:3% 0 0 2%;" >			
+			<label><b><font color="#1874CD">Heat Map:</label ></b>
+			</div>
+			<div class='control' style="position:relative;float:left;width:20%;font-size:16px;">
+				<div><button type="button" id='button_heatmap_trip_purpose_show' style="width:80%;background-color:#778899;color:#FFFAFA">show</button></div>
+				<div style="padding:6% 0 0 0"><button type="button" id='button_heatmap_trip_purpose_hide' style="width:80%;background-color:#778899;color:#FFFAFA">hide</button></div>
+			</div>
+			<div class='control' style="position:relative;float:right;width:58%;font-size:16px;" >
+				<div class='control_radius'  style="padding:0 0 0 3%;">
+					<label for='trip_purpose_radius'>Radius:&nbsp;&nbsp;&nbsp;&nbsp;</label><u><span id='span_trip_purpose_radius'>37</span></u>&nbsp;&nbsp;&nbsp;		
+					<input id="trip_purpose_radius"  type="range" value="37"  min="0" max="100" step="1"  />&nbsp;
+				</div>
+				<div class='control_opacity' style="padding:1% 0 0 3%;">
+					<label for='trip_purpose_opacity'>Opacity:&nbsp;&nbsp;</label><u><span id='span_trip_purpose_opacity'>83</span>%</u>&nbsp;			
+					<input id="trip_purpose_opacity"  type="range" value="83"  min="0" max="100" step="1"  />&nbsp;</font>
+				</div>
+			</div>
+		</div>
+		<div id="for_all_purpose_chart" style="position:absolute;top:15%;padding:3% 0 0 0;border-style:dotted none none none;border-width:3px;border-color:#D3D3D3;box-sizing: border-box;display:none">
+		</div>
+
+	</div>
+
+</div>
+  
+<div id='checkin_module'>
+
+	<div style="position:absolute;float:left;width:100%;padding:1% 0 1% 0;font-size:16px;background-color:#EEE9E9;">
+		<label ><b>&nbsp;Human Activities:&nbsp;&nbsp;</b></label >
+		<input id='check-ins' type='checkbox' name='rtoggle' value='check-ins' onclick="menu()">
+		<label for='check-ins'>Check-ins</label>
+	</div>
+	<div class='show_checkins' style="position:absolute;top:8%;height:90%;padding:2% 0 0 0;width:100%;display:none;">		
+		<div class='control' style="position:relative;float:left;width:20%;font-size:16px;padding:3% 0 0 2%;" >			
+			<label><b><font color="#1874CD">Heat Map:</label ></b>
+		</div>
+		<div class='control' style="position:relative;float:left;width:20%;font-size:16px;">
+			<div><button type="button" id='button_heatmap_checkins_show' style="width:80%;background-color:#778899;color:#FFFAFA">show</button></div>
+			<div style="padding:6% 0 0 0"><button type="button" id='button_heatmap_checkins_hide' style="width:80%;background-color:#778899;color:#FFFAFA">hide</button></div>
+		</div>
+		<div class='control' style="position:relative;float:right;width:58%;font-size:16px;" >
+			<div class='control_radius'  style="padding:0 0 0 3%;">
+				<label for='checkins_radius'>Radius:&nbsp;&nbsp;&nbsp;&nbsp;</label><u><span id='span_checkins_radius'>37</span></u>&nbsp;&nbsp;&nbsp;		
+				<input id="checkins_radius"  type="range" value="37"  min="0" max="100" step="1"  />&nbsp;
+			</div>
+			<div class='control_opacity' style="padding:1% 0 0 3%;">
+				<label for='checkins_opacity'>Opacity:&nbsp;&nbsp;</label><u><span id='span_checkins_opacity'>83</span>%</u>&nbsp;			
+				<input id="checkins_opacity"  type="range" value="83"  min="0" max="100" step="1"  />&nbsp;</font>
+			</div>
+		</div>
+		<div id='checkins_chart' style="position:absolute;top:20%;border-style:dotted none none none;border-width:3px;border-color:#D3D3D3;box-sizing: border-box;padding:3% 0 0 0;"></div>
+	</div>
+</div>
+
+</body>
+<script>
+
+//展示地图			
+mapboxgl.accessToken = 'pk.eyJ1IjoibGN3IiwiYSI6ImNqa2h4c2kwZDB3YnYzcXBqM2V6ZWc4ODUifQ.pFm59Mjq4yC9fBAHE3XLpQ';
+var map = new mapboxgl.Map({
+	container: 'map', // container id
+	
+	style: 'mapbox://styles/mapbox/streets-v9',
+	center: [-73.9805, 40.7455], // starting position
+	zoom: 12.1 // starting zoom
+});
+
+map.addControl(new MapboxGeocoder({
+    accessToken: mapboxgl.accessToken
+}),'top-left');
+//路线规划控件
+//map.addControl(new MapboxDirections({
+//    accessToken: mapboxgl.accessToken
+//}), 'top-right');
+// Add zoom and rotation controls to the map.
+map.addControl(new mapboxgl.NavigationControl(),'bottom-right');
+
+
+//Infomations of mouse position
+map.on('mousemove', function (e){
+	lat = e.lngLat.lat;
+	lng = e.lngLat.lng;
+	$('#latlng').text(lat.toFixed(4)+', '+lng.toFixed(4));
+});	
+//气泡控件
+var popup = new mapboxgl.Popup({
+        closeButton: false,
+        closeOnClick: false
+    });	
+////////////////////////////////////////////////////////////////////////////////
+//双击产生标记trip的OD
+var marker_origin = null;
+var marker_destination = new mapboxgl.Marker({color:'#FF6347'});
+var trip_start_time;
+var trip_end_time;
+map.on('dblclick',function(e){
+	if($('#individual_inference').is(':checked')){
+		map.doubleClickZoom.disable();
+		if($('#non-workday').is(':checked') && $('#workday').is(':checked')){
+				alert("Please select only one day, not both of them!");
+		}
+		else if(!$('#non-workday').is(':checked') && !$('#workday').is(':checked')){
+				alert("Please select one day, the workday or the non-workday!");
+		}
+		else if($.isEmptyObject(marker_origin)){
+			marker_origin = new mapboxgl.Marker({color:'#1E90FF'})
+							.setLngLat(e.lngLat)
+							.addTo(map);
+							
+			$('#origin_latlng').val(e.lngLat.lng.toFixed(5)+' , '+e.lngLat.lat.toFixed(5));
+			map.getSource('polygon_O').setData(createGeoJSONCircle([e.lngLat.lng, e.lngLat.lat], 0.25).data);
+			trip_start_time = get_trip_time();
+			map.setLayoutProperty('polygon_O', 'visibility', 'visible');		
+			//alert(trip_start_time);
+
+		}
+		else{
+			marker_destination.setLngLat(e.lngLat);
+			marker_destination.addTo(map);
+			$('#destination_latlng').val(e.lngLat.lng.toFixed(5)+' , '+e.lngLat.lat.toFixed(5));
+			map.getSource('polygon_D').setData(createGeoJSONCircle([e.lngLat.lng, e.lngLat.lat], 0.25).data);
+			trip_end_time = get_trip_time();
+			map.setLayoutProperty('polygon_D', 'visibility', 'visible');
+			//alert(trip_end_time);
+		}
+	}else map.doubleClickZoom.enable();	
+});
+// 标记地图上的一个圆形区域
+var createGeoJSONCircle = function(center, radiusInKm, points) {
+    if(!points) points = 128;
+
+    var coords = {
+        latitude: center[1],
+        longitude: center[0]
+    };
+
+    var km = radiusInKm;
+
+    var ret = [];
+    var distanceX = km/(111.320*Math.cos(coords.latitude*Math.PI/180));
+    var distanceY = km/110.574;
+
+    var theta, x, y;
+    for(var i=0; i<points; i++) {
+        theta = (i/points)*(2*Math.PI);
+        x = distanceX*Math.cos(theta);
+        y = distanceY*Math.sin(theta);
+
+        ret.push([coords.longitude+x, coords.latitude+y]);
+    }
+    ret.push(ret[0]);
+
+    return {
+        "type": "geojson",
+        "data": {
+            "type": "FeatureCollection",
+            "features": [{
+                "type": "Feature",
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [ret]
+                }
+            }]
+        }
+    };
+};
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+//拖动时间控件，其中包括checkins和trip purpose的统计图表及地图上的显示和heatmap
+var time_control = document.getElementById("time");
+time_control.addEventListener('input', function(e) {
+		$('#span_time_hour').text(('0' + parseInt(e.target.value/3600)).slice(-2));
+		$('#span_time_min').text(('0' + parseInt(e.target.value%3600/60)).slice(-2));
+		$('#span_time_reco').text(('0' + parseInt(e.target.value%3600%60)).slice(-2));
+		var date_1 = '2013-01-13 ';
+		var date_0 = '2013-01-01 ';
+		var date_0_timestamp=(new Date(Date.parse('2013-01-01 ' + $('#span_time_hour').text() + ":" + $('#span_time_min').text() + ":" +$('#span_time_reco').text()))).getTime();//0下的当前时间戳workday
+		var date_1_timestamp=(new Date(Date.parse('2013-01-13 ' + $('#span_time_hour').text() + ":" + $('#span_time_min').text() + ":" +$('#span_time_reco').text()))).getTime();//1下的当前时间戳non-workday
+		//map.setPaintProperty('checkins-heat', 'heatmap-opacity', parseInt(e.target.value)/100);
+		//控制checkin的数据随时间演化
+		if ($('#check-ins').is(':checked')){
+			if($('#workday').is(':checked')){
+				var timestamp = time_limit(date_0_timestamp,date_0);//获取时间区间
+				map.setFilter('checkins_0', ["any",["all",["==", "is_nonWorkday", 0],[">=", "check_time", timestamp[0]],["<=", "check_time", timestamp[1]]],["all",["==", "is_nonWorkday", 0],[">=", "check_time", timestamp[2]],["<=", "check_time", timestamp[3]]]]);//过滤时间区间外的点
+				map.setLayoutProperty('checkins_0', 'visibility', 'visible');
+				//if(!$('#non-workday').is(':checked')){
+					//Chart_checkins.setOption(set_chart_option_checkins(get_checkins_num()));
+				//}
+			}
+			if($('#non-workday').is(':checked')){
+				var timestamp = time_limit(date_1_timestamp,date_1);
+				//alert(timestamp);
+				map.setFilter('checkins_1', ["any",["all",["==", "is_nonWorkday", 1],[">=", "check_time", timestamp[0]],["<=", "check_time", timestamp[1]]],["all",["==", "is_nonWorkday", 1],[">=", "check_time", timestamp[2]],["<=", "check_time", timestamp[3]]]]);
+				map.setLayoutProperty('checkins_1', 'visibility', 'visible');			
+				//if(!$('#workday').is(':checked')){
+					//Chart_checkins.setOption(set_chart_option_checkins(get_checkins_num()));
+				//}
+			}
+			Chart_checkins.setOption(set_chart_option_checkins(get_checkins_num()));
+		}		
+		//控制taxi_destination的数据随时间演化trip purpose
+		if ($('#evolving_patterns').is(':checked') && $('#all_purpose').is(':checked')){
+			if($('#workday').is(':checked')){
+				var timestamp = time_limit_trip_purpose(date_0_timestamp,date_0);//获取时间区间
+				map.setFilter('taxi_destination_0', ["any",["all",["==", "is_nonWorkday", 0],[">=", "end_time", timestamp[0]],["<=", "end_time", timestamp[1]]],["all",["==", "is_nonWorkday", 0],[">=", "end_time", timestamp[2]],["<=", "end_time", timestamp[3]]]]);//过滤时间区间外的点
+				map.setLayoutProperty('taxi_destination_0', 'visibility', 'visible');
+			}
+			if($('#non-workday').is(':checked')){
+				var timestamp = time_limit_trip_purpose(date_1_timestamp,date_1);
+				map.setFilter('taxi_destination_1', ["any",["all",["==", "is_nonWorkday", 1],[">=", "end_time", timestamp[0]],["<=", "end_time", timestamp[1]]],["all",["==", "is_nonWorkday", 1],[">=", "end_time", timestamp[2]],["<=", "end_time", timestamp[3]]]]);
+				map.setLayoutProperty('taxi_destination_1', 'visibility', 'visible');			
+			}
+			
+			Chart_all_purpose.setOption(set_chart_option_all_purpose(get_all_purpose_num()));
+		}
+		//控制heatmap的数据随时间演化checkins
+		var visibility_checkins_heatmap = map.getLayoutProperty('checkins-heat', 'visibility');//是否可见
+		if (visibility_checkins_heatmap === 'visible') {
+			var realtime_checkins = [];
+			if ($('#non-workday').is(':checked') && $('#workday').is(':checked')){
+				for(var i=0;i<features.length;i++){
+					if(features[i].properties.check_time >=(date_0_timestamp - 7200000) && features[i].properties.check_time <=(date_0_timestamp + 7200000)){
+						realtime_checkins.push(features[i]);
+					}else if(features[i].properties.check_time >=(date_1_timestamp - 7200000) && features[i].properties.check_time <=(date_1_timestamp + 7200000)){
+						realtime_checkins.push(features[i]);
+					}
+				}
+				checkins_manhattan_data.features = realtime_checkins;
+				map.getSource('checkins_data_for_heatmap').setData(checkins_manhattan_data);
+			}else if ($('#non-workday').is(':checked')){
+				for(var i=0;i<checkins_manhattan_1.length;i++){
+					if(checkins_manhattan_1[i].properties.check_time >=(date_1_timestamp - 14400000) && checkins_manhattan_1[i].properties.check_time <=(date_1_timestamp + 14400000)){
+						realtime_checkins.push(checkins_manhattan_1[i]);
+					}
+				}
+				checkins_manhattan_data.features = realtime_checkins;//过滤时间区间外的点
+				map.getSource('checkins_data_for_heatmap').setData(checkins_manhattan_data);
+			}else if ($('#workday').is(':checked')){	
+				for(var i=0;i<checkins_manhattan_0.length;i++){
+					if(checkins_manhattan_0[i].properties.check_time >=(date_0_timestamp - 14400000) && checkins_manhattan_0[i].properties.check_time <=(date_0_timestamp + 14400000)){
+						realtime_checkins.push(checkins_manhattan_0[i]);
+					}
+				}
+				checkins_manhattan_data.features = realtime_checkins;//过滤时间区间外的点
+				map.getSource('checkins_data_for_heatmap').setData(checkins_manhattan_data);				
+			}
+		}
+		//控制heatmap的数据随时间演化trip purpose
+		var visibility_trip_purpose_heatmap = map.getLayoutProperty('trip_purpose-heat', 'visibility');//是否可见
+		if (visibility_trip_purpose_heatmap === 'visible') {
+			var realtime_trip_purpose = [];
+			if ($('#non-workday').is(':checked') && $('#workday').is(':checked')){
+				var timestamp_1 = time_limit_trip_purpose(date_1_timestamp,date_1);
+				var timestamp_0 = time_limit_trip_purpose(date_0_timestamp,date_0);
+				for(var i=0;i<trip_purpose_data.features.length;i++){
+					if((trip_purpose_data.features[i].properties.end_time >=timestamp_0[0] && trip_purpose_data.features[i].properties.end_time <=timestamp_0[1]) || (trip_purpose_data.features[i].properties.end_time >=timestamp_0[2] && trip_purpose_data.features[i].properties.end_time <=timestamp_0[3])){
+						realtime_trip_purpose.push(trip_purpose_data.features[i]);
+					}else if((trip_purpose_data.features[i].properties.end_time >=timestamp_1[0] && trip_purpose_data.features[i].properties.end_time <=timestamp_1[1]) || (trip_purpose_data.features[i].properties.end_time >=timestamp_1[2] && trip_purpose_data.features[i].properties.end_time <=timestamp_1[3])){
+						realtime_trip_purpose.push(trip_purpose_data.features[i]);
+					}
+				}
+				trip_purpose_target_data.features = realtime_trip_purpose;
+				map.getSource('trip_purpose_data_for_heatmap').setData(trip_purpose_target_data);
+			}else if ($('#non-workday').is(':checked')){
+				var timestamp = time_limit_trip_purpose(date_1_timestamp,date_1);
+				for(var i=0;i<trip_purpose_data_1.length;i++){
+					if((trip_purpose_data_1[i].properties.end_time >=timestamp[0] && trip_purpose_data_1[i].properties.end_time <=timestamp[1]) || (trip_purpose_data_1[i].properties.end_time >=timestamp[2] && trip_purpose_data_1[i].properties.end_time <=timestamp[3])){
+						realtime_trip_purpose.push(trip_purpose_data_1[i]);
+					}
+				}
+				trip_purpose_target_data.features = realtime_trip_purpose;//过滤时间区间外的点
+				map.getSource('trip_purpose_data_for_heatmap').setData(trip_purpose_target_data);
+			}else if ($('#workday').is(':checked')){	
+				var timestamp = time_limit_trip_purpose(date_0_timestamp,date_0);
+				for(var i=0;i<trip_purpose_data_0.length;i++){
+					if((trip_purpose_data_0[i].properties.end_time >=timestamp[0] && trip_purpose_data_0[i].properties.end_time <=timestamp[1]) || (trip_purpose_data_0[i].properties.end_time >=timestamp[2] && trip_purpose_data_0[i].properties.end_time <=timestamp[3])){
+						realtime_trip_purpose.push(trip_purpose_data_0[i]);
+					}
+				}
+				trip_purpose_target_data.features = realtime_trip_purpose;//过滤时间区间外的点
+				map.getSource('trip_purpose_data_for_heatmap').setData(trip_purpose_target_data);				
+			}
+		}
+});
+//时间控件----获取当前visible的各类型checkin数量
+//chart数据数组初始化
+var checkins_num = new Array(9);
+function get_checkins_num(){
+	checkins_num[0] = (map.queryRenderedFeatures({filter:['==', 'type_id', 1]})).length;
+	checkins_num[1] = (map.queryRenderedFeatures({filter:['==', 'type_id', 2]})).length;
+	checkins_num[2] = (map.queryRenderedFeatures({filter:['==', 'type_id', 3]})).length;
+	checkins_num[3] = (map.queryRenderedFeatures({filter:['==', 'type_id', 4]})).length;
+	checkins_num[4] = (map.queryRenderedFeatures({filter:['==', 'type_id', 5]})).length;
+	checkins_num[5] = (map.queryRenderedFeatures({filter:['==', 'type_id', 6]})).length;
+	checkins_num[6] = (map.queryRenderedFeatures({filter:['==', 'type_id', 7]})).length;
+	checkins_num[7] = (map.queryRenderedFeatures({filter:['==', 'type_id', 8]})).length;
+	checkins_num[8] = (map.queryRenderedFeatures({filter:['==', 'type_id', 9]})).length;
+	return checkins_num;
+}
+//时间控件----获取当前visible的各类型trip purpose数量
+var all_purpose_num = new Array(5);
+function get_all_purpose_num(){
+	all_purpose_num[0] = (map.queryRenderedFeatures({filter:['==', 'trip_purpose', 1]})).length;
+	all_purpose_num[1] = (map.queryRenderedFeatures({filter:['==', 'trip_purpose', 2]})).length;
+	all_purpose_num[2] = (map.queryRenderedFeatures({filter:['==', 'trip_purpose', 3]})).length;
+	all_purpose_num[3] = (map.queryRenderedFeatures({filter:['==', 'trip_purpose', 4]})).length;
+	all_purpose_num[4] = (map.queryRenderedFeatures({filter:['==', 'trip_purpose', 5]})).length;
+	return all_purpose_num;
+}
+//时间控件----函数控制时间点前后几小时区间checkin
+function time_limit(checkin_time,date){
+	//var checkin_time = (new Date(Date.parse("2013-01-01 18:02:41"))).getTime();
+	var max_timestamp = checkin_time + 10800000;
+	var min_timestamp = checkin_time - 10800000;
+	//alert(new Date(checkin_time)+":"+new Date(max_timestamp)+":"+new Date(min_timestamp));
+	
+	//处理大于24点，小于0点
+	var day_start = (new Date(Date.parse(date + "00:00:00"))).getTime();
+	var day_end = (new Date(Date.parse(date + "23:59:59"))).getTime();
+	var time_bound;
+	if (max_timestamp > day_end) { 
+		time_bound = [min_timestamp, max_timestamp, day_start, max_timestamp - 86400000];//86400000=24小时
+	}else if (min_timestamp < day_start){
+		time_bound = [min_timestamp, max_timestamp, min_timestamp + 86400000, day_end];
+	}else {
+		time_bound = [min_timestamp, max_timestamp, 0, 0];//正常情况
+	}
+	return time_bound;
+}
+//时间控件----函数控制时间点前后几小时区间trip purpose
+function time_limit_trip_purpose(trip_purpose_time,date){
+	//var checkin_time = (new Date(Date.parse("2013-01-01 18:02:41"))).getTime();
+	var max_timestamp = trip_purpose_time + 10800000;
+	var min_timestamp = trip_purpose_time - 10800000;
+	
+	//处理大于24点，小于0点
+	var day_start = (new Date(Date.parse(date + "00:00:00"))).getTime();
+	var day_end = (new Date(Date.parse(date + "23:59:59"))).getTime();
+	var time_bound;
+	if (max_timestamp > day_end) { 
+		time_bound = [min_timestamp, max_timestamp, day_start, max_timestamp - 86400000];
+	}else if (min_timestamp < day_start){
+		time_bound = [min_timestamp, max_timestamp, min_timestamp + 86400000, day_end];
+	}else {
+		time_bound = [min_timestamp, max_timestamp, 0, 0];//正常情况
+	}
+	return time_bound;
+}
+//layer OD 圆形区域
+map.on('load',function(){
+	map.addSource("polygon_O", createGeoJSONCircle([-73.9805, 40.7568], 0));
+	map.addLayer({
+		"id": "polygon_O",
+		"type": "fill",
+		"source": "polygon_O",
+		"layout": {},
+		"paint": {
+			"fill-color": "blue",
+			"fill-opacity": 0.2
+		}
+	});
+	map.addSource("polygon_D", createGeoJSONCircle([-73.9805, 40.7568], 0));
+	map.addLayer({
+		"id": "polygon_D",
+		"type": "fill",
+		"source": "polygon_D",
+		"layout": {},
+		"paint": {
+			"fill-color": "red",
+			"fill-opacity": 0.2
+		}
+	});
+});
+/////////////////////////////////////////////////增加layer : check-ins
+map.on('load',function(){
+	map.addSource("checkins_data",{
+		'type':'geojson',
+		'data': checkins_manhattan
+	});
+	var layers = ["checkins_0","checkins_1"];
+	layers.forEach(function(layer,i) {
+		map.addLayer({
+			"id": layer,
+			"type": "symbol",
+			"source": "checkins_data",
+			"layout": {
+				"visibility": 'none',
+				"icon-image": [
+					'match',
+					['get', 'type_id'],
+					1, 'theatre-15',
+					2, 'college-15',
+					3, 'restaurant-15',
+					4, 'bar-15',
+					5, 'playground-15',
+					6, 'town-hall-15',
+					7, 'lodging-15',
+					8, 'grocery-15',
+					9, 'rail-metro-15',
+					/* other */ '#ccc'
+				],
+				"icon-size": [
+					"interpolate",
+					["linear"],
+					["zoom"],
+						12, 0.15,
+						20, 2
+				],
+				"icon-allow-overlap": true
+			},
+			"filter": ["==", "is_nonWorkday", i],
+		});         
+
+			//显示popup
+		map.on('dblclick', layer , function (e) {
+			var coordinates = e.features[0].geometry.coordinates.slice();
+			var description = "<h3><strong>"+ e.features[0].properties.type_name + "</strong></h3><h4><p>" + (new Date(e.features[0].properties.check_time)).toString().slice(0,-17) +"</p></h4>";
+
+			while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+				coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+			}
+
+			popup.setLngLat(coordinates)
+				.setHTML(description)
+				.addTo(map);
+			});
+
+		map.on('click', layer, function() {
+			map.getCanvas().style.cursor = '';
+			popup.remove();
+		});
+    });
+});
+//载入图片来显示trip purpose
+map.on('load',function(){
+	map.loadImage('https://liaochengwu.github.io/test/images/icons/arrow.png', function(error, image) {
+	if (error) throw error;
+	map.addImage('arrow',image);});
+	map.loadImage('https://liaochengwu.github.io/test/images/icons/circle.png', function(error, image) {
+	if (error) throw error;
+	map.addImage('circle',image);});
+	map.loadImage('https://liaochengwu.github.io/test/images/icons/star.png', function(error, image) {
+	if (error) throw error;
+	map.addImage('star',image);});
+	map.loadImage('https://liaochengwu.github.io/test/images/icons/square.png', function(error, image) {
+	if (error) throw error;
+	map.addImage('square',image);});
+	map.loadImage('https://liaochengwu.github.io/test/images/icons/diamond.png', function(error, image) {
+	if (error) throw error;
+	map.addImage('diamond',image);});
+});
+
+/////////////////////////////////////////////////增加layer : taxi_destination/trip purpose
+map.on('load',function(){
+	map.addSource("taxi_destination_data",{
+		'type':'geojson',
+		'data': taxi_manhattan_destination
+	});
+	var layers = ["taxi_destination_0","taxi_destination_1"];
+	layers.forEach(function(layer,i) {
+		map.addLayer({
+			"id": layer,
+			"type": "symbol",
+			"source": "taxi_destination_data",
+			"layout": {
+				"visibility": 'none',
+				"icon-image": [
+					'match',
+					['get', 'trip_purpose'],
+					1, 'arrow',
+					2, 'square',
+					3, 'star',
+					4, 'diamond',
+					5, 'circle',
+					/* other */ '#ccc'
+				],
+				"icon-size": [
+					"interpolate",
+					["linear"],
+					["zoom"],
+						12, 0.15,
+						20, 0.9
+				],
+				"icon-allow-overlap": true
+			},
+			"filter": ["==", "is_nonWorkday", i],
+		
+		});         
+
+			//显示popup
+		map.on('dblclick', layer , function (e) {
+			var coordinates = e.features[0].geometry.coordinates.slice();
+			var purpose;
+			if (e.features[0].properties.trip_purpose==1) purpose = "Dining";
+			else if (e.features[0].properties.trip_purpose==2) purpose = "Recreation";
+			else if (e.features[0].properties.trip_purpose==3) purpose = "Work";
+			else if (e.features[0].properties.trip_purpose==4) purpose = "Homing";
+			else if (e.features[0].properties.trip_purpose==5) purpose = "Other";
+			var description = "<h2><strong>"+ purpose +"</strong></h2><h3><p>" + (new Date(e.features[0].properties.end_time)).toString().slice(0,-17) +"</p></h3>";
+
+			while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+				coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+			}
+			popup.setLngLat(coordinates)
+				.setHTML(description)
+				.addTo(map);
+			});
+
+		map.on('click',  function() {
+			map.getCanvas().style.cursor = '';
+			popup.remove();
+		});
+    });
+});
+///////////////////////////////////////////////////////////////heatmap_checkins
+//range拖动改变heat map属性大小;定义值
+var span_checkins_radius = document.getElementById("span_checkins_radius");
+var span_checkins_opacity = document.getElementById("span_checkins_opacity");
+var checkins_radius = document.getElementById("checkins_radius");
+var checkins_opacity = document.getElementById("checkins_opacity");
+var checkins_manhattan_data = checkins_manhattan;//读入数据
+//heatmap_checkins
+map.on('load',function(){
+	map.addSource("checkins_data_for_heatmap", {
+		type: "geojson",
+		data: checkins_manhattan_data,
+		cluster: true,
+		clusterMaxZoom: 16, // Max zoom to cluster points on
+		clusterRadius: 15 // Use small cluster radius for the heatmap look
+	});
+    map.addLayer({
+        "id": "checkins-heat",
+        "type": "heatmap",
+        "source": "checkins_data_for_heatmap",
+        "maxzoom": 16,
+		"layout":{
+			"visibility": "none"
+		},
+        "paint": {
+            // Increase the heatmap weight based on frequency and property magnitude
+            "heatmap-weight": [
+                "interpolate",
+                ["linear"],
+                ["get", "point_count"],
+                0, 0,
+                500, 1
+            ],
+            // Increase the heatmap color weight weight by zoom level
+            // heatmap-intensity is a multiplier on top of heatmap-weight
+            "heatmap-intensity": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                0, 1,
+                16, 3
+            ],
+            // Color ramp for heatmap.  Domain is 0 (low) to 1 (high).
+            // Begin color ramp at 0-stop with a 0-transparancy color
+            // to create a blur-like effect.
+            "heatmap-color": [
+                "interpolate",
+                ["linear"],
+                ["heatmap-density"],
+                0, "rgba(33,102,172,0)",
+                0.2, "rgb(103,169,207)",
+                0.4, "rgb(209,229,240)",
+                0.6, "rgb(253,219,199)",
+                0.8, "rgb(239,138,98)",
+                1, "rgb(178,24,43)"
+            ],
+            // Adjust the heatmap radius by zoom level
+            "heatmap-radius": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                0, 0,
+                16, 30
+            ],
+            // Transition from heatmap to circle layer by zoom level
+            "heatmap-opacity": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                9, 1,
+                18, 0
+            ],
+        },
+		"filter": ["==", "cluster", true]
+    }, 'waterway-label');
+    
+	map.setPaintProperty('checkins-heat', 'heatmap-radius', parseInt(checkins_radius.value));
+	checkins_radius.addEventListener('input', function(e) {
+		span_checkins_radius.textContent = e.target.value;
+		map.setPaintProperty('checkins-heat', 'heatmap-radius', parseInt(e.target.value));
+	});
+	map.setPaintProperty('checkins-heat', 'heatmap-opacity', parseInt(checkins_opacity.value)/100);
+	checkins_opacity.addEventListener('input', function(e) {
+		span_checkins_opacity.textContent = e.target.value;
+		map.setPaintProperty('checkins-heat', 'heatmap-opacity', parseInt(e.target.value)/100);
+	});
+	 
+});
+//筛选工作日和非工作日控制heatmap_checkins
+var checkins_manhattan_0 = [];
+var checkins_manhattan_1 = [];
+var features = checkins_manhattan.features;
+//alert(features[0].properties.is_nonWorkday);
+for(var i=0;i<features.length;i++){
+	if(features[i].properties.is_nonWorkday==0){
+	checkins_manhattan_0.push(features[i]);
+	}
+	if(features[i].properties.is_nonWorkday==1){
+	checkins_manhattan_1.push(features[i]);
+	}
+}
+////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////heatmap_trip purpose
+//range拖动改变heat map属性大小;定义值
+var span_trip_purpose_radius = document.getElementById("span_trip_purpose_radius");
+var span_trip_purpose_opacity = document.getElementById("span_trip_purpose_opacity");
+var trip_purpose_radius = document.getElementById("trip_purpose_radius");
+var trip_purpose_opacity = document.getElementById("trip_purpose_opacity");
+var trip_purpose_data = taxi_manhattan_destination;
+var trip_purpose_data_0 = [];
+var trip_purpose_data_1 = [];
+var trip_purpose_target_data = taxi_manhattan_destination;
+var trip_purpose_dining = [];
+var trip_purpose_recreation = [];
+var trip_purpose_work = [];
+var trip_purpose_homing = [];
+var trip_purpose_others = [];
+var trip_purpose_features = taxi_manhattan_destination.features;//获取源数据
+//heatmap_trip_purpose
+map.on('load',function(){
+	map.addSource("trip_purpose_data_for_heatmap", {
+		type: "geojson",
+		data: trip_purpose_target_data,
+		cluster: true,
+		clusterMaxZoom: 16, // Max zoom to cluster points on
+		clusterRadius: 15 // Use small cluster radius for the heatmap look
+	});
+    map.addLayer({
+        "id": "trip_purpose-heat",
+        "type": "heatmap",
+        "source": "trip_purpose_data_for_heatmap",
+        "maxzoom": 16,
+		"layout":{
+			"visibility": "none"
+		},
+        "paint": {
+            // Increase the heatmap weight based on frequency and property magnitude
+            "heatmap-weight": [
+                "interpolate",
+                ["linear"],
+                ["get", "point_count"],
+                0, 0,
+                150, 1
+            ],
+            // Increase the heatmap color weight weight by zoom level
+            // heatmap-intensity is a multiplier on top of heatmap-weight
+            "heatmap-intensity": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                0, 1,
+                16, 3
+            ],
+            // Color ramp for heatmap.  Domain is 0 (low) to 1 (high).
+            // Begin color ramp at 0-stop with a 0-transparancy color
+            // to create a blur-like effect.
+            "heatmap-color": [
+                "interpolate",
+                ["linear"],
+                ["heatmap-density"],
+                0, "rgba(33,102,172,0)",
+                0.2, "rgb(103,169,207)",
+                0.4, "rgb(209,229,240)",
+                0.6, "rgb(253,219,199)",
+                0.8, "rgb(239,138,98)",
+                1, "rgb(178,24,43)"
+            ],
+            // Adjust the heatmap radius by zoom level
+            "heatmap-radius": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                0, 0,
+                16, 70
+            ],
+            // Transition from heatmap to circle layer by zoom level
+            "heatmap-opacity": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                9, 1,
+                18, 0
+            ],
+        },
+		"filter": ["==", "cluster", true]
+    }, 'waterway-label');
+    
+	map.setPaintProperty('trip_purpose-heat', 'heatmap-radius', parseInt(trip_purpose_radius.value));
+	trip_purpose_radius.addEventListener('input', function(e) {
+		span_trip_purpose_radius.textContent = e.target.value;
+		map.setPaintProperty('trip_purpose-heat', 'heatmap-radius', parseInt(e.target.value));
+	});
+	map.setPaintProperty('trip_purpose-heat', 'heatmap-opacity', parseInt(trip_purpose_opacity.value)/100);
+	trip_purpose_opacity.addEventListener('input', function(e) {
+		span_trip_purpose_opacity.textContent = e.target.value;
+		map.setPaintProperty('trip_purpose-heat', 'heatmap-opacity', parseInt(e.target.value)/100);
+	});
+	 
+});
+
+//alert(features[0].properties.is_nonWorkday);
+
+
+//响应按钮
+$(document).ready(function(){
+	//heatmap_checkins
+	$("#button_heatmap_checkins_show").click(function(){
+		map.setLayoutProperty('checkins_0', 'visibility', 'none');
+		map.setLayoutProperty('checkins_1', 'visibility', 'none');
+		$('#heatmap_legend_checkins').show();
+		if ($('#non-workday').is(':checked') && $('#workday').is(':checked')){		
+			checkins_manhattan_data.features = features;
+			map.getSource('checkins_data_for_heatmap').setData(checkins_manhattan_data);
+			map.setLayoutProperty('checkins-heat', 'visibility', 'visible');
+		}else if ($('#non-workday').is(':checked')){	
+			checkins_manhattan_data.features = checkins_manhattan_1;//过滤时间区间外的点
+			map.getSource('checkins_data_for_heatmap').setData(checkins_manhattan_data);
+			map.setLayoutProperty('checkins-heat', 'visibility', 'visible');
+		}else if ($('#workday').is(':checked')){	
+			checkins_manhattan_data.features = checkins_manhattan_0;//过滤时间区间外的点
+			map.getSource('checkins_data_for_heatmap').setData(checkins_manhattan_data); 
+			map.setLayoutProperty('checkins-heat', 'visibility', 'visible');			
+		}
+	});
+	$("#button_heatmap_checkins_hide").click(function(){
+	$('#heatmap_legend_checkins').hide();
+		map.setLayoutProperty('checkins-heat', 'visibility', 'none');
+	});
+	//heatmap_trip purpose;    
+	$("#button_heatmap_trip_purpose_show").click(function(){
+		$('#heatmap_legend_purpose').show();
+		if ($('#non-workday').is(':checked') && $('#workday').is(':checked')){	
+			map.getSource('trip_purpose_data_for_heatmap').setData(trip_purpose_data);
+			map.setLayoutProperty('trip_purpose-heat', 'visibility', 'visible');
+		}else if ($('#non-workday').is(':checked')){
+			trip_purpose_data_1 = [];
+			for(var i=0;i<trip_purpose_data.features.length;i++){		
+				if(trip_purpose_data.features[i].properties.is_nonWorkday==1){
+					trip_purpose_data_1.push(trip_purpose_data.features[i]);
+				}
+			}
+			trip_purpose_target_data.features = trip_purpose_data_1;
+			map.getSource('trip_purpose_data_for_heatmap').setData(trip_purpose_target_data);
+			map.setLayoutProperty('trip_purpose-heat', 'visibility', 'visible');
+		}else if ($('#workday').is(':checked')){
+			trip_purpose_data_0 = [];
+			for(var i=0;i<trip_purpose_data.features.length;i++){		
+				if(trip_purpose_data.features[i].properties.is_nonWorkday==0){
+					trip_purpose_data_0.push(trip_purpose_data.features[i]);
+				}
+			}
+			trip_purpose_target_data.features = trip_purpose_data_0;
+			map.getSource('trip_purpose_data_for_heatmap').setData(trip_purpose_target_data);
+			map.setLayoutProperty('trip_purpose-heat', 'visibility', 'visible');
+			
+		}
+	});
+	$("#button_heatmap_trip_purpose_hide").click(function(){
+		map.setLayoutProperty('trip_purpose-heat', 'visibility', 'none');
+		$('#heatmap_legend_purpose').hide();
+	});
+	//trip purpose inference
+	$("#button_get_trip_purpose").click(function(){
+		if ($('#destination_latlng').val()=='')
+			alert("Please mark the OD pair by double-click!");
+		else{
+			get_trip_purpose(trip_start_time,trip_end_time);
+			$('.loading').fadeIn();
+		}
+	});
+	$("#button_cancel_trip").click(function(){
+		$('.loading').fadeOut();
+		$('#trip_purpose_display').animate({opacity:'0',fontSize:'10px'});
+		marker_origin.remove();
+		marker_destination.remove();
+		$(origin_latlng).val("");
+		$(destination_latlng).val("");
+		marker_origin = null;
+		Chart_trip_purpose_inference.setOption(set_chart_option_trip([]));
+		//圆形区域消失
+		map.setLayoutProperty('polygon_O', 'visibility', 'none');
+		map.setLayoutProperty('polygon_D', 'visibility', 'none');
+	});
+	
+		
+});
+
+
+//////////////////////////////////////////////////////////////////////
+//热图
+
+
+//range拖动改变heat map属性大小;定义值
+
+//////////////////////////////////////////////////////////////////////
+
+
+
+
+
+//画pie图表checkins
+//var Chart_poi = echarts.init(document.getElementById('checkins_chart'));
+$("#checkins_chart").css('width',$("#checkin_module").width()); 
+$("#checkins_chart").css('height',$(".show_checkins").height()*0.79); 
+var Chart_checkins = echarts.init(document.getElementById('checkins_chart'));
+var Chart_trip_purpose_inference = echarts.init(document.getElementById('trip_purpose_inference_chart'));
+Chart_trip_purpose_inference.setOption(set_chart_option_trip([]));
+//画pie图表all trip purpose
+$("#for_all_purpose_chart").css('width',$("#evolving_patterns_module").width()); 
+$("#for_all_purpose_chart").css('height',$("#evolving_patterns_module").height()*0.85); 
+var Chart_all_purpose = echarts.init(document.getElementById('for_all_purpose_chart'));
+
+
+</script>
+
+</html>

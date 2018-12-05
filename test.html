@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<body>
+<script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+<form >
+input:<br>
+<input type="text" id="taxi">
+<br>
+<input type="button" value="Submit" onclick="test()">
+</form> 
+
+<script lang="text/javascript">
+	function test() {
+		var taxi = "{7971,'2013-01-01 15:11:48.0','2013-01-01 15:18:10.0',-73.978165,40.757977,18033,-73.989838,40.751171,17428}";
+		//alert("s");
+		document.location="matlab:trip2vec("+taxi+");";
+		var vec = $.ajax({url:"temp.txt",async:false});
+		document.getElementById("taxi").value = vec.responseText;
+	}			
+</script>
+
+</body>
+</html>
